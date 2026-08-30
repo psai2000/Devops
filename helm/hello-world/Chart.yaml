@@ -1,0 +1,13 @@
+apiVersion: v2
+name: hello-world
+description: A Helm chart for the Lucidity Hello World Go microservice
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Lucidity DevOps
+keywords:
+  - hello-world
+  - go
+  - microservice
+

@@ -1,0 +1,21 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Terraform (covered by terraform/.gitignore too)
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Go
+app/vendor/
+
+# Docker
+*.log
+

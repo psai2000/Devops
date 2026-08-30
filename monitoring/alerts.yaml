@@ -1,0 +1,61 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hello-world-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: hello-world.rules
+      rules:
+        # Alert if error rate exceeds 1% for 5 minutes
+        - alert: HelloWorldHighErrorRate
+          expr: |
+            (
+              sum(rate(http_requests_total{namespace="default", status=~"5.*"}[5m]))
+              /
+              sum(rate(http_requests_total{namespace="default"}[5m]))
+            ) > 0.01
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High error rate on Hello World service"
+            description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+        # Alert if p99 latency exceeds 500ms for 5 minutes
+        - alert: HelloWorldHighLatency
+          expr: |
+            histogram_quantile(0.99,
+              sum(rate(http_request_duration_seconds_bucket{namespace="default"}[5m])) by (le)
+            ) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High p99 latency on Hello World service"
+            description: "p99 latency is {{ $value }}s over the last 5 minutes."
+
+        # Alert if no pods are running
+        - alert: HelloWorldDown
+          expr: |
+            absent(up{job=~".*hello-world.*"} == 1)
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Hello World service is down"
+            description: "No running hello-world pods detected for 1 minute."
+
+        # Alert if pod restarts are frequent
+        - alert: HelloWorldFrequentRestarts
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="default", container="hello-world"}[1h]) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Frequent restarts detected for Hello World"
+            description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last hour."
+

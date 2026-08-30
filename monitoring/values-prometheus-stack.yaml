@@ -1,0 +1,177 @@
+# =============================================================================
+# kube-prometheus-stack Helm values
+# Chart: https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
+# =============================================================================
+
+# -- Global settings
+fullnameOverride: monitoring
+
+# =============================================================================
+# Prometheus
+# =============================================================================
+prometheus:
+  prometheusSpec:
+    # Retain metrics for 15 days
+    retention: 15d
+
+    # Storage — uses EBS CSI driver provisioned by Terraform
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
+
+    # Scrape all ServiceMonitors regardless of labels
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+
+    # Scrape all PodMonitors regardless of labels
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelector: {}
+    podMonitorNamespaceSelector: {}
+
+    # Resource limits
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+    # Additional scrape configs for pods with prometheus.io annotations
+    additionalScrapeConfigs:
+      - job_name: "kubernetes-pods"
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+
+# =============================================================================
+# Grafana
+# =============================================================================
+grafana:
+  enabled: true
+
+  adminUser: admin
+  # Change this! In production use a Secret or external secret manager
+  adminPassword: lucidity-admin
+
+  service:
+    type: LoadBalancer
+
+  # Persistent storage for dashboards
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClassName: gp3
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Auto-provision the Prometheus data source
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://monitoring-prometheus:9090
+          access: proxy
+          isDefault: true
+          editable: true
+
+  # Load custom dashboards from ConfigMaps
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: custom
+          orgId: 1
+          folder: "Custom"
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/custom
+
+  dashboardsConfigMaps:
+    custom: hello-world-dashboard
+
+  # Sidecar picks up ConfigMaps with the grafana_dashboard label
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+
+# =============================================================================
+# Alertmanager
+# =============================================================================
+alertmanager:
+  enabled: true
+
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# =============================================================================
+# Node Exporter — collects host-level metrics
+# =============================================================================
+nodeExporter:
+  enabled: true
+
+# =============================================================================
+# kube-state-metrics — collects Kubernetes object metrics
+# =============================================================================
+kubeStateMetrics:
+  enabled: true
+
+# =============================================================================
+# Storage class for gp3 EBS volumes
+# =============================================================================
+# NOTE: The gp3 StorageClass is created separately in storageclass.yaml
+

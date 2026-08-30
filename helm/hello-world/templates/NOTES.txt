@@ -1,0 +1,27 @@
+🎉 Hello World has been deployed!
+
+1. Get the application URL:
+{{- if .Values.ingress.enabled }}
+  {{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+  {{- end }}
+{{- else if eq .Values.service.type "LoadBalancer" }}
+  NOTE: It may take a few minutes for the LoadBalancer to be provisioned.
+  Run the following to get the external IP:
+
+    kubectl get svc {{ include "hello-world.fullname" . }} -n {{ .Release.Namespace }} -w
+
+{{- else if eq .Values.service.type "ClusterIP" }}
+  kubectl port-forward svc/{{ include "hello-world.fullname" . }} 8080:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  curl http://localhost:8080/
+{{- end }}
+
+2. Test the deployment:
+  curl <EXTERNAL-IP>/hello
+
+3. Check health:
+  curl <EXTERNAL-IP>/healthz
+
+4. View metrics (Prometheus):
+  curl <EXTERNAL-IP>/metrics
+
