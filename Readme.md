@@ -1,4 +1,4 @@
-# Lucidity DevOps Assignment
+# DevOps Assignment
 
 Production-grade Kubernetes platform on AWS EKS with a Python (Flask) microservice, Helm-based deployment, Prometheus/Grafana observability, and GitHub Actions CI/CD.
 
